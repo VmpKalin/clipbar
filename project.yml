@@ -67,6 +67,18 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.aholoiad.clipbar.tests
         GENERATE_INFOPLIST_FILE: YES
         CODE_SIGN_IDENTITY: "-"
+  ClipBarUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: UITests
+    dependencies:
+      - target: ClipBar
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.aholoiad.clipbar.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: ClipBar
 schemes:
   ClipBar:
     build:
@@ -77,6 +89,14 @@ schemes:
     test:
       config: Debug
       targets: [ClipBarTests]
+  ClipBarUITests:
+    build:
+      targets:
+        ClipBarUITests: all
+        ClipBar: all
+    test:
+      config: Debug
+      targets: [ClipBarUITests]
   ClipBarTests:
     build:
       targets:

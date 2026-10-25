@@ -32,6 +32,7 @@ struct SideMenuView: View {
                     .padding(.vertical, 12)
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier("menu.settings")
         }
         .modifier(DrawerChrome(isDrawer: dismissMenu != nil))
     }
@@ -80,6 +81,7 @@ struct SideMenuView: View {
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("menu.\(section.rawValue)")
     }
 }
 
