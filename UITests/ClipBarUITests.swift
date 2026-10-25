@@ -10,9 +10,15 @@ final class ClipBarUITests: XCTestCase {
         app.launchArguments = ["-didOnboard", "YES", "-pasteboard.lastSeenChangeCount", "-1"]
     }
 
-    private func allowPasteIfAsked() {
-        let allow = springboard.buttons["Allow Paste"]
-        if allow.waitForExistence(timeout: 3) { allow.tap() }
+    private func allowPasteIfAsked(timeout: TimeInterval = 10) {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            for host in [springboard, app] {
+                let allow = host.buttons["Allow Paste"]
+                if allow.exists { allow.tap(); return }
+            }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.4))
+        }
     }
 
     private func setPasteboard(_ text: String) {
