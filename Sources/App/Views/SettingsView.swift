@@ -1,6 +1,8 @@
 import SwiftUI
 #if os(iOS)
 import UIKit
+#else
+import ServiceManagement
 #endif
 
 struct SettingsView: View {
@@ -8,6 +10,22 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage("historyLimit") private var historyLimit = 500
     @State private var confirmClear = false
+    #if os(macOS)
+    @State private var launchError: String?
+    @State private var launchEnabled = SMAppService.mainApp.status == .enabled
+
+    private var launchAtLogin: Binding<Bool> {
+        Binding(get: { launchEnabled }, set: { on in
+            do {
+                if on { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
+                launchEnabled = on
+                launchError = nil
+            } catch {
+                launchError = error.localizedDescription
+            }
+        })
+    }
+    #endif
 
     var body: some View {
         Form {
@@ -36,10 +54,12 @@ struct SettingsView: View {
             }
             #else
             Section("Capturing") {
-                Text("ClipBar watches the clipboard while it is running and skips passwords and other concealed content.")
+                Toggle("Launch at login", isOn: launchAtLogin)
+                Text("ClipBar lives in the menu bar and watches the clipboard while it is running. Passwords and other concealed content are skipped.")
                     .font(.footnote)
                 Text("Paths can be opened in Finder or Terminal from an item's context menu.")
                     .font(.footnote)
+                if let error = launchError { Text(error).font(.footnote).foregroundStyle(.red) }
             }
             #endif
 

@@ -21,11 +21,12 @@ targets:
     sources:
       - path: Sources/Core
       - path: Sources/App
-        excludes: ["Resources/Info.plist"]
+        excludes: ["Resources/Info.plist", "Resources/Info-macOS.plist"]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.aholoiad.clipbar
         INFOPLIST_FILE: Sources/App/Resources/Info.plist
+        "INFOPLIST_FILE[sdk=macosx*]": Sources/App/Resources/Info-macOS.plist
         CODE_SIGN_ENTITLEMENTS: Sources/App/Resources/ClipBar.entitlements
         "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": Sources/App/Resources/ClipBar-macOS.entitlements
         TARGETED_DEVICE_FAMILY: "1,2"

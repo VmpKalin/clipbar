@@ -39,6 +39,10 @@ final class AppModel {
             WidgetCenter.shared.reloadAllTimelines()
             #endif
         }
+        #if os(macOS)
+        capture.captureNow()
+        capture.startPolling()
+        #endif
     }
 
     // MARK: Actions

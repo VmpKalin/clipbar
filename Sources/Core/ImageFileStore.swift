@@ -27,7 +27,7 @@ public struct ImageFileStore: Sendable {
         let size = Self.pixelSize(of: png)
         return Stored(
             fileName: fileName,
-            thumbnail: Self.thumbnail(from: png, maxPixel: 320),
+            thumbnail: Self.thumbnail(from: png, maxPixel: 640),
             width: size.width,
             height: size.height
         )
@@ -63,7 +63,7 @@ public struct ImageFileStore: Sendable {
             kCGImageSourceCreateThumbnailWithTransform: true,
         ]
         guard let thumb = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else { return nil }
-        return encode(thumb, as: .jpeg, quality: 0.8)
+        return encode(thumb, as: .jpeg, quality: 0.85)
     }
 
     static func encode(_ image: CGImage, as type: UTType, quality: Double) -> Data? {

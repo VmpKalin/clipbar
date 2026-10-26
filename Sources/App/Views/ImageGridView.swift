@@ -23,15 +23,15 @@ struct ImageGridView: View {
 
     private func cell(_ item: ClipItem) -> some View {
         ZStack(alignment: .topTrailing) {
-            Group {
+            ZStack {
+                Color.primary.opacity(0.05)
                 if let image = Image.fromData(item.thumbnailData) {
-                    image.resizable().scaledToFill()
+                    image.resizable().scaledToFit().padding(4)
                 } else {
                     Image(systemName: "photo").font(.largeTitle).foregroundStyle(.secondary)
                 }
             }
-            .frame(minWidth: 0, maxWidth: .infinity)
-            .aspectRatio(1, contentMode: .fill)
+            .aspectRatio(1, contentMode: .fit)
             .clipShape(.rect(cornerRadius: 14))
             .overlay(alignment: .bottomLeading) {
                 Text(item.title)

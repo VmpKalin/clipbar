@@ -22,15 +22,16 @@ struct ClipRowView: View {
         switch item.kind {
         case .image:
             if let image = Image.fromData(item.thumbnailData) {
-                image.resizable().scaledToFill()
-                    .frame(width: 56, height: 56)
-                    .clipShape(.rect(cornerRadius: 10))
+                image.resizable().scaledToFit()
+                    .frame(maxWidth: 120, maxHeight: 72)
+                    .clipShape(.rect(cornerRadius: 8))
+                    .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.quaternary))
             } else {
                 icon("photo")
             }
         case .link: icon("link")
         case .filePath: icon(isDirectory ? "folder.fill" : "doc.fill")
-        case .text: icon(looksLikeCode ? "terminal" : "text.alignleft")
+        case .text: icon((item.text ?? "").looksLikeCode ? "terminal" : "text.alignleft")
         }
     }
 
@@ -47,7 +48,7 @@ struct ClipRowView: View {
         switch item.kind {
         case .text:
             Text(item.title)
-                .font(looksLikeCode ? .system(.body, design: .monospaced) : .body)
+                .font((item.text ?? "").looksLikeCode ? .system(.body, design: .monospaced) : .body)
                 .lineLimit(2)
         default:
             Text(item.title).font(.body.weight(.medium)).lineLimit(1)
@@ -93,13 +94,4 @@ struct ClipRowView: View {
         return isDir.boolValue
     }
 
-    private var looksLikeCode: Bool {
-        guard let text = item.text?.trimmingCharacters(in: .whitespaces) else { return false }
-        let prefixes = ["$ ", "./", "sudo ", "git ", "npm ", "yarn ", "pnpm ", "brew ", "xcodebuild", "python", "pip ",
-                        "cd ", "ls ", "curl ", "docker ", "swift ", "make ", "cargo ", "go ", "--", "-"]
-        if prefixes.contains(where: { text.hasPrefix($0) }) { return true }
-        if text.contains("{") && text.contains("}") { return true }
-        if text.contains("();") || text.contains(" => ") || text.contains(" -> ") { return true }
-        return false
-    }
 }
