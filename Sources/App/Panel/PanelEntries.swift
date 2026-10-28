@@ -59,14 +59,19 @@ struct EntryBuilder {
         }
 
         // Quick search across everything: Library and Contacts first, then history.
+        // Filters such as app: or is: only make sense for history.
+        let parsed = SearchQuery(query)
+        guard parsed.filters.isEmpty, !parsed.text.isEmpty else {
+            return history.map { .clip($0, shortcut: nil) }
+        }
         var entries: [PanelEntry] = []
-        let lib = matchingSnippets(query).prefix(4)
+        let lib = matchingSnippets(parsed.text).prefix(4)
         if !lib.isEmpty {
             entries.append(.header(id: "lib", title: "Library", systemImage: "books.vertical"))
             entries += lib.map { .snippet($0, shortcut: nil) }
         }
         if contacts.access == .granted {
-            let people = contacts.search(query, limit: 3)
+            let people = contacts.search(parsed.text, limit: 3)
             if !people.isEmpty {
                 entries.append(.header(id: "contacts", title: "Contacts", systemImage: "person.crop.circle"))
                 for card in people {

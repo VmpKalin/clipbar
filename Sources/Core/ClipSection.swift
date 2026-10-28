@@ -54,14 +54,17 @@ public enum ClipSection: String, CaseIterable, Identifiable, Sendable {
     /// Filters and orders `items` (any order) for display in this section.
     /// With a search query, results are ordered by match quality (pinned first in All).
     public func apply(to items: [ClipItem], search: String = "") -> [ClipItem] {
-        let query = search.trimmingCharacters(in: .whitespaces)
-        let filtered = items.filter { includes($0) }
+        let parsed = SearchQuery(search.trimmingCharacters(in: .whitespaces))
+        let filtered = items.filter { includes($0) && parsed.matchesFilters($0) }
+        let query = parsed.text
 
         if !query.isEmpty {
             let scored: [(ClipItem, Int)] = filtered.compactMap { item in
-                guard let s = SearchMatcher.score(query, fields: [item.text, item.title, item.sourceAppName]) else {
-                    return nil
-                }
+                // Secrets are only findable by their mask and app, never by content.
+                let fields: [String?] = item.tags.contains(.secret)
+                    ? [item.title, item.sourceAppName]
+                    : [item.text, item.title, item.sourceAppName]
+                guard let s = SearchMatcher.score(query, fields: fields) else { return nil }
                 return (item, s)
             }
             return scored.sorted { a, b in

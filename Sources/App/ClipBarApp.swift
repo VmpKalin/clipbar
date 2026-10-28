@@ -43,6 +43,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = item
         panel = PanelController(model: model, statusButton: item.button)
         registerHotKey()
+        observeCaptures()
 
         if CommandLine.arguments.contains("--open-panel") {
             Task { @MainActor in
@@ -78,6 +79,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         registeredPreset = preset
         hotKey = HotKey(preset: preset) { [weak self] in
             self?.panel?.toggle(fromHotKey: true)
+        }
+    }
+
+    /// Briefly shows a checkmark in the menu bar whenever something new is captured.
+    private func observeCaptures() {
+        withObservationTracking {
+            _ = model.capture.captureCount
+        } onChange: { [weak self] in
+            Task { @MainActor in
+                self?.flashCapture()
+                self?.observeCaptures()
+            }
+        }
+    }
+
+    private var flashTask: Task<Void, Never>?
+
+    private func flashCapture() {
+        guard UserDefaults.standard.object(forKey: "flashOnCapture") as? Bool ?? true,
+              let button = statusItem?.button else { return }
+        let check = NSImage(systemSymbolName: "checkmark.circle.fill", accessibilityDescription: "Captured")
+        check?.isTemplate = true
+        button.image = check
+        flashTask?.cancel()
+        flashTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(700))
+            guard !Task.isCancelled else { return }
+            self.statusItem?.button?.image = self.statusImage(paused: self.model.capture.isPaused)
         }
     }
 

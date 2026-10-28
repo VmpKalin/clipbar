@@ -96,6 +96,27 @@ public final class ClipStore {
         save()
     }
 
+    /// Deletes unpinned clips captured before `date`. Returns how many were removed.
+    @discardableResult
+    public func removeUnpinned(olderThan date: Date) -> Int {
+        let old = allItems().filter { !$0.isPinned && !$0.isSaved && $0.createdAt < date }
+        for item in old {
+            if let file = item.imageFileName { images.delete(fileName: file) }
+            context.delete(item)
+        }
+        if !old.isEmpty { save() }
+        return old.count
+    }
+
+    /// Deletes unpinned secrets (API keys, tokens) captured before `date`.
+    @discardableResult
+    public func removeSecrets(olderThan date: Date) -> Int {
+        let old = allItems().filter { !$0.isPinned && $0.isSecret && $0.createdAt < date }
+        for item in old { context.delete(item) }
+        if !old.isEmpty { save() }
+        return old.count
+    }
+
     /// Number of clips captured since the given date.
     public func count(since date: Date) -> Int {
         let d = FetchDescriptor<ClipItem>(predicate: #Predicate { $0.createdAt >= date })

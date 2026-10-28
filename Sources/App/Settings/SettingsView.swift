@@ -25,6 +25,7 @@ private struct GeneralSettings: View {
     @AppStorage(HotKey.Preset.defaultsKey) private var hotkey = HotKey.Preset.shiftCommandV.rawValue
     @AppStorage("panelPosition") private var position = PanelController.Position.statusItem.rawValue
     @AppStorage("panelSize") private var size = PanelController.Size.regular.rawValue
+    @AppStorage("flashOnCapture") private var flashOnCapture = true
     @State private var trusted = Paster.isTrusted
 
     var body: some View {
@@ -65,6 +66,7 @@ private struct GeneralSettings: View {
             }
             Section {
                 Toggle("Launch ClipBar at login", isOn: $model.launchAtLogin)
+                Toggle("Flash the menu bar icon when something is copied", isOn: $flashOnCapture)
             }
         }
         .formStyle(.grouped)
@@ -83,6 +85,8 @@ private struct GeneralSettings: View {
 private struct CaptureSettings: View {
     @Environment(AppModel.self) private var model
     @AppStorage("historyLimit") private var historyLimit = 1000
+    @AppStorage("secretLifetimeMinutes") private var secretMinutes = 10
+    @AppStorage("historyMaxAgeDays") private var maxAgeDays = 0
     @State private var confirmClear = false
 
     var body: some View {
@@ -101,6 +105,24 @@ private struct CaptureSettings: View {
                 Text("Pinned items never count toward the limit. Passwords and other concealed content are never stored.")
                     .font(.footnote).foregroundStyle(.secondary)
                 Button("Clear History…", role: .destructive) { confirmClear = true }
+            }
+            Section("Privacy") {
+                Picker("Remove secrets after", selection: $secretMinutes) {
+                    Text("1 minute").tag(1)
+                    Text("10 minutes").tag(10)
+                    Text("1 hour").tag(60)
+                    Text("Never").tag(0)
+                }
+                Text("API keys, tokens and private keys are masked in the list and removed automatically unless pinned.")
+                    .font(.footnote).foregroundStyle(.secondary)
+                Picker("Remove clips older than", selection: $maxAgeDays) {
+                    Text("1 day").tag(1)
+                    Text("1 week").tag(7)
+                    Text("1 month").tag(30)
+                    Text("3 months").tag(90)
+                    Text("Never").tag(0)
+                }
+                .onChange(of: maxAgeDays) { _, _ in model.capture.runMaintenance() }
             }
             Section("Ignore these apps") {
                 if capture.ignoredBundleIDs.isEmpty {

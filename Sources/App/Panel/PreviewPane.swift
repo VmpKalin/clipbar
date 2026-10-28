@@ -166,6 +166,7 @@ struct ActionButton: View {
 struct ClipPreview: View {
     let item: ClipItem
     let imageURL: URL?
+    @State private var revealed = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -210,7 +211,21 @@ struct ClipPreview: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         default:
-            if let text = item.text, let color = Color(clipText: text) {
+            if item.isSecret, let text = item.text {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("Looks like a secret key or token", systemImage: "key.fill")
+                        .font(.system(size: 11.5, weight: .medium)).foregroundStyle(.red)
+                    Text(revealed ? text : ContentInspector.masked(text))
+                        .font(.system(size: 12, design: .monospaced))
+                        .textSelection(.enabled)
+                        .lineLimit(4)
+                    HStack {
+                        Button(revealed ? "Hide" : "Reveal") { revealed.toggle() }
+                            .buttonStyle(.glass).controlSize(.small)
+                        Text(secretFootnote).font(.system(size: 10.5)).foregroundStyle(.secondary)
+                    }
+                }
+            } else if let text = item.text, let color = Color(clipText: text) {
                 HStack(spacing: 14) {
                     RoundedRectangle(cornerRadius: 12, style: .continuous).fill(color)
                         .frame(width: 88, height: 88)
@@ -232,6 +247,13 @@ struct ClipPreview: View {
                 }
             }
         }
+    }
+
+    private var secretFootnote: String {
+        let minutes = UserDefaults.standard.object(forKey: "secretLifetimeMinutes") as? Int ?? 10
+        if item.isPinned || minutes == 0 { return "Kept until you delete it." }
+        let left = max(0, Int(item.createdAt.addingTimeInterval(Double(minutes) * 60).timeIntervalSinceNow / 60))
+        return "Removed automatically in \(left) min. Pin to keep."
     }
 
     private var meta: some View {

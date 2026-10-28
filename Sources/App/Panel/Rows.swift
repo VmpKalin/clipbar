@@ -101,7 +101,7 @@ struct ClipRow: View {
 
     @ViewBuilder
     private var primary: some View {
-        let isCode = item.tags.contains(.code)
+        let isCode = item.tags.contains(.code) || item.isSecret
         Text(item.title)
             .font(isCode ? .system(size: 12, design: .monospaced) : .system(size: 13))
             .lineLimit(item.kind == .text ? 2 : 1)
@@ -159,7 +159,9 @@ struct ClipLeading: View {
             }
         case .text:
             let tags = item.tags
-            if tags.contains(.color), let text = item.text, let color = Color(clipText: text) {
+            if tags.contains(.secret) {
+                IconTile(systemImage: "key.fill", tint: .red)
+            } else if tags.contains(.color), let text = item.text, let color = Color(clipText: text) {
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .fill(color)
                     .frame(width: 28, height: 28)

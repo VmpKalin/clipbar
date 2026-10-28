@@ -63,11 +63,34 @@ final class CaptureCoordinator {
 
     func startPolling(interval: Duration = .milliseconds(400)) {
         guard pollingTask == nil else { return }
+        runMaintenance()
         pollingTask = Task { [weak self] in
+            var ticks = 0
             while !Task.isCancelled {
                 try? await Task.sleep(for: interval)
                 self?.captureNow()
+                ticks += 1
+                if ticks % 150 == 0 { self?.runMaintenance() } // about once a minute
             }
+        }
+    }
+
+    /// Minutes after which secrets (API keys, tokens) are removed. 0 keeps them.
+    var secretLifetimeMinutes: Int {
+        UserDefaults.standard.object(forKey: "secretLifetimeMinutes") as? Int ?? 10
+    }
+
+    /// Days after which unpinned clips are removed. 0 keeps them.
+    var historyMaxAgeDays: Int {
+        UserDefaults.standard.object(forKey: "historyMaxAgeDays") as? Int ?? 0
+    }
+
+    func runMaintenance(now: Date = .now) {
+        if secretLifetimeMinutes > 0 {
+            store.removeSecrets(olderThan: now.addingTimeInterval(-Double(secretLifetimeMinutes) * 60))
+        }
+        if historyMaxAgeDays > 0 {
+            store.removeUnpinned(olderThan: now.addingTimeInterval(-Double(historyMaxAgeDays) * 86_400))
         }
     }
 

@@ -9,6 +9,8 @@ public enum ContentTag: String, CaseIterable, Sendable {
     case json
     case code
     case number
+    /// API keys, tokens, private keys: masked in the UI and removed automatically.
+    case secret
 }
 
 public enum ContentInspector {
@@ -35,6 +37,7 @@ public enum ContentInspector {
         if isJSON(text) { tags.insert(.json) }
         if text.looksLikeCode || tags.contains(.json) { tags.insert(.code) }
         if isNumber(text) { tags.insert(.number) }
+        if isSecret(text) { tags = [.secret] }
         return tags
     }
 
@@ -50,6 +53,33 @@ public enum ContentInspector {
         if text.wholeMatch(of: /\d{4}[\-.\/]\d{1,2}[\-.\/]\d{1,2}|\d{1,2}[\-.\/]\d{1,2}[\-.\/]\d{2,4}/) != nil { return false }
         let digits = text.filter(\.isNumber).count
         return (7...15).contains(digits) && (text.hasPrefix("+") || text.contains(" ") || text.contains("-") || text.contains("("))
+    }
+
+    /// Well-known credential formats. Conservative on purpose: false positives would hide normal clips.
+    public static func isSecret(_ text: String) -> Bool {
+        if text.contains("-----BEGIN") && text.contains("PRIVATE KEY-----") { return true }
+        guard !text.contains(" "), !text.contains("\n"), text.count >= 20, text.count <= 4000 else { return false }
+        let patterns: [Regex<Substring>] = [
+            /sk-(?:ant-|proj-)?[A-Za-z0-9_\-]{20,}/,           // OpenAI / Anthropic
+            /gh[pousr]_[A-Za-z0-9]{30,}/,                     // GitHub
+            /github_pat_[A-Za-z0-9_]{40,}/,
+            /AKIA[0-9A-Z]{16}/,                               // AWS access key id
+            /xox[baprs]-[A-Za-z0-9\-]{10,}/,                  // Slack
+            /AIza[0-9A-Za-z_\-]{35}/,                         // Google API key
+            /(?:sk|rk)_(?:live|test)_[A-Za-z0-9]{20,}/,           // Stripe
+            /eyJ[A-Za-z0-9_\-]{8,}\.eyJ[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}/, // JWT
+            /glpat-[A-Za-z0-9_\-]{20,}/,                      // GitLab
+            /npm_[A-Za-z0-9]{36}/,                            // npm
+        ]
+        return patterns.contains { text.wholeMatch(of: $0) != nil }
+    }
+
+    /// "sk-ant-abcd…wxyz" style mask that keeps a hint of the value.
+    public static func masked(_ text: String) -> String {
+        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if t.contains("PRIVATE KEY") { return "•••• private key ••••" }
+        guard t.count > 12 else { return String(repeating: "•", count: t.count) }
+        return "\(t.prefix(6))••••••\(t.suffix(4))"
     }
 
     public static func isNumber(_ text: String) -> Bool {

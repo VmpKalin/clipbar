@@ -46,3 +46,45 @@ final class TextTransformTests: XCTestCase {
                        "Title\nbold and link\n• item")
     }
 }
+
+final class TextTransformExtraTests: XCTestCase {
+    func testLines() {
+        XCTAssertEqual(TextTransform.sortLines.apply("b\na\nc"), "a\nb\nc")
+        XCTAssertEqual(TextTransform.uniqueLines.apply("a\nb\na"), "a\nb")
+        XCTAssertNil(TextTransform.sortLines.apply("single"))
+    }
+
+    func testTracking() {
+        XCTAssertEqual(TextTransform.removeTracking.apply("https://x.com/a?utm_source=tw&id=5&fbclid=abc"), "https://x.com/a?id=5")
+        XCTAssertEqual(TextTransform.removeTracking.apply("https://x.com/a?utm_source=tw"), "https://x.com/a")
+        XCTAssertNil(TextTransform.removeTracking.apply("https://x.com/a?id=5"))
+    }
+
+    func testColors() {
+        XCTAssertEqual(TextTransform.colorToRGB.apply("#FF8000"), "rgb(255, 128, 0)")
+        XCTAssertEqual(TextTransform.colorToHex.apply("rgb(255, 128, 0)"), "#FF8000")
+    }
+
+    func testTimestamp() {
+        XCTAssertNotNil(TextTransform.timestampToDate.apply("1761609600"))
+        XCTAssertNotNil(TextTransform.timestampToDate.apply("1761609600000"))
+        XCTAssertNil(TextTransform.timestampToDate.apply("42"))
+    }
+
+    func testCalculator() {
+        XCTAssertEqual(TextTransform.calculate.apply("2 + 3 * 4"), "14")
+        XCTAssertEqual(TextTransform.calculate.apply("(2+3)*4"), "20")
+        XCTAssertEqual(TextTransform.calculate.apply("10 / 4"), "2.5")
+        XCTAssertEqual(TextTransform.calculate.apply("2^10"), "1024")
+        XCTAssertEqual(TextTransform.calculate.apply("-3 + 1"), "-2")
+        XCTAssertNil(TextTransform.calculate.apply("1/0"))
+        XCTAssertNil(TextTransform.calculate.apply("42"))
+        XCTAssertNil(TextTransform.calculate.apply("2026-10-28"), "dates are not subtractions")
+        XCTAssertEqual(TextTransform.calculate.apply("10-3"), "7")
+        XCTAssertNil(TextTransform.calculate.apply("hello + 1"))
+    }
+
+    func testJSONEscape() {
+        XCTAssertEqual(TextTransform.jsonEscape.apply("a \"b\"\nc"), #""a \"b\"\nc""#)
+    }
+}

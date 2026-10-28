@@ -66,6 +66,8 @@ public final class ClipItem {
         set { kindRaw = newValue.rawValue }
     }
 
+    public var isSecret: Bool { tags.contains(.secret) }
+
     /// Content tags derived from the text (email, color, JSON…). Not stored.
     public var tags: Set<ContentTag> {
         guard kind == .text, let text else { return [] }
@@ -87,6 +89,7 @@ public final class ClipItem {
             }
             return PathResolver.displayName(for: text ?? "")
         case .text:
+            if tags.contains(.secret) { return ContentInspector.masked(text ?? "") }
             return (text ?? "")
                 .trimmingCharacters(in: .whitespacesAndNewlines)
                 .replacingOccurrences(of: "\n", with: " ⏎ ")

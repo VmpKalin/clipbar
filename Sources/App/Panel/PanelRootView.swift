@@ -206,7 +206,7 @@ struct PanelRootView: View {
         case .clipboard:
             if !state.search.isEmpty {
                 EmptyStateView(systemImage: "magnifyingglass", title: "No matches",
-                               message: "Nothing in your history, Library or Contacts matches “\(state.search)”.")
+                               message: "Nothing in your history, Library or Contacts matches “\(state.search)”.\nTip: narrow down with app:safari, is:image, is:link, is:code, is:today.")
             } else if clips.isEmpty {
                 EmptyStateView(systemImage: "doc.on.clipboard", title: "Nothing copied yet",
                                message: "Copy anything — text, links, files, images. ClipBar keeps it here. Open this panel any time with \(HotKey.Preset.current.title).")
