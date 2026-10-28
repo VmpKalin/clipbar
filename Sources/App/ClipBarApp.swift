@@ -44,6 +44,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel = PanelController(model: model, statusButton: item.button)
         registerHotKey()
 
+        if CommandLine.arguments.contains("--open-panel") {
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(600))
+                self.panel?.show()
+                if let button = self.statusItem?.button, let window = button.window {
+                    FileHandle.standardError.write(Data("status item frame: \(window.convertToScreen(button.convert(button.bounds, to: nil))) visible: \(self.statusItem?.isVisible ?? false)\n".utf8))
+                }
+            }
+        }
+
         observers.append(NotificationCenter.default.addObserver(
             forName: UserDefaults.didChangeNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.defaultsChanged() }
