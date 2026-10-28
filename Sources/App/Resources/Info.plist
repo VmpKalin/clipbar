@@ -11,25 +11,8 @@
 	<key>CFBundlePackageType</key><string>APPL</string>
 	<key>CFBundleShortVersionString</key><string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key><string>$(CURRENT_PROJECT_VERSION)</string>
-	<key>LSRequiresIPhoneOS</key><true/>
-	<key>UILaunchScreen</key><dict/>
-	<key>UIApplicationSceneManifest</key>
-	<dict>
-		<key>UIApplicationSupportsMultipleScenes</key><false/>
-	</dict>
-	<key>UISupportedInterfaceOrientations</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-	<key>UISupportedInterfaceOrientations~ipad</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationPortraitUpsideDown</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
+	<key>LSMinimumSystemVersion</key><string>$(MACOSX_DEPLOYMENT_TARGET)</string>
+	<key>LSUIElement</key><true/>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -37,8 +20,6 @@
 			<key>CFBundleURLSchemes</key><array><string>clipbar</string></array>
 		</dict>
 	</array>
-	<key>LSApplicationQueriesSchemes</key>
-	<array><string>shareddocuments</string></array>
 	<key>NSHumanReadableCopyright</key><string></string>
 </dict>
 </plist>

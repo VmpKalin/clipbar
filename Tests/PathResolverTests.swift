@@ -36,6 +36,15 @@ final class PathResolverTests: XCTestCase {
         XCTAssertEqual(PathResolver.terminalDirectory(for: tmp).path, tmp.path)
     }
 
+    func testMultiplePaths() {
+        XCTAssertEqual(PathResolver.paths(in: "/tmp\n\n ~/ \n"), ["/tmp", "~/"])
+        XCTAssertEqual(PathResolver.resolveAll("/tmp\n/definitely/missing").map(\.path), ["/tmp"])
+    }
+
+    func testQuotedPath() {
+        XCTAssertEqual(PathResolver.resolve("'/tmp'")?.path, "/tmp")
+    }
+
     func testDisplayName() {
         XCTAssertEqual(PathResolver.displayName(for: "/Users/a/b.txt"), "b.txt")
         XCTAssertEqual(PathResolver.displayName(for: "/Users/a/dir/"), "dir")

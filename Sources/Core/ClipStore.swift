@@ -37,11 +37,16 @@ public final class ClipStore {
     public func ingest(_ payload: ClipPayload, now: Date = .now) -> ClipItem? {
         if let existing = item(withHash: payload.contentHash) {
             existing.createdAt = now
+            if let bundle = payload.sourceAppBundleID {
+                existing.sourceAppBundleID = bundle
+                existing.sourceAppName = payload.sourceAppName
+            }
             save()
             return existing
         }
         let item = ClipItem(kind: payload.kind, text: payload.text, contentHash: payload.contentHash,
-                            createdAt: now, lastUsedAt: now)
+                            createdAt: now, lastUsedAt: now,
+                            sourceAppBundleID: payload.sourceAppBundleID, sourceAppName: payload.sourceAppName)
         if let data = payload.imageData {
             do {
                 let stored = try images.store(data, id: item.id)
@@ -73,6 +78,28 @@ public final class ClipStore {
     public func toggleSaved(_ item: ClipItem) {
         item.isSaved.toggle()
         save()
+    }
+
+    /// Replaces the text of a text-like clip, re-classifying it. If another clip already has the new
+    /// content, that clip is removed so there are no duplicates.
+    public func updateText(_ item: ClipItem, to text: String) {
+        guard item.kind != .image else { return }
+        let payload = ClipPayload(text: text)
+        if let other = self.item(withHash: payload.contentHash), other.id != item.id {
+            item.isPinned = item.isPinned || other.isPinned
+            item.useCount += other.useCount
+            context.delete(other)
+        }
+        item.text = text
+        item.kind = payload.kind
+        item.contentHash = payload.contentHash
+        save()
+    }
+
+    /// Number of clips captured since the given date.
+    public func count(since date: Date) -> Int {
+        let d = FetchDescriptor<ClipItem>(predicate: #Predicate { $0.createdAt >= date })
+        return (try? context.fetchCount(d)) ?? 0
     }
 
     public func delete(_ item: ClipItem) {

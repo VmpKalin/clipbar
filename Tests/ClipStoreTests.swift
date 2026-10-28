@@ -9,7 +9,7 @@ final class ClipStoreTests: XCTestCase {
     var imagesDir: URL!
 
     override func setUp() async throws {
-        container = try AppGroup.makeModelContainer(inMemory: true)
+        container = try Storage.makeModelContainer(inMemory: true)
         imagesDir = FileManager.default.temporaryDirectory.appending(path: "clipbar-tests-\(UUID().uuidString)")
         store = ClipStore(context: container.mainContext, images: ImageFileStore(directory: imagesDir))
     }
@@ -93,6 +93,32 @@ final class ClipStoreTests: XCTestCase {
         store.onChange = { fired += 1 }
         store.ingest(ClipPayload(text: "z"))
         XCTAssertEqual(fired, 1)
+    }
+
+    func testSourceAppRecorded() {
+        let item = store.ingest(ClipPayload(text: "x", sourceAppBundleID: "com.apple.Safari", sourceAppName: "Safari"))
+        XCTAssertEqual(item?.sourceAppName, "Safari")
+        XCTAssertEqual(ClipSection.all.apply(to: store.allItems(), search: "safari").count, 1)
+    }
+
+    func testUpdateTextReclassifiesAndMerges() {
+        let a = store.ingest(ClipPayload(text: "hello"))!
+        let b = store.ingest(ClipPayload(text: "https://example.com"))!
+        store.markUsed(b)
+        store.updateText(a, to: "https://example.com")
+        XCTAssertEqual(store.allItems().count, 1)
+        XCTAssertEqual(a.kind, .link)
+        XCTAssertEqual(a.useCount, 1)
+    }
+
+    func testSmartSections() {
+        store.ingest(ClipPayload(text: "#ff0000"))
+        store.ingest(ClipPayload(text: "me@example.com"))
+        store.ingest(ClipPayload(text: "git push"))
+        let all = store.allItems()
+        XCTAssertEqual(ClipSection.colors.apply(to: all).map(\.text), ["#ff0000"])
+        XCTAssertEqual(ClipSection.contactInfo.apply(to: all).map(\.text), ["me@example.com"])
+        XCTAssertEqual(ClipSection.code.apply(to: all).map(\.text), ["git push"])
     }
 
     // MARK: Sections

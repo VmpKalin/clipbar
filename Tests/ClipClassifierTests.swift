@@ -8,7 +8,10 @@ final class ClipClassifierTests: XCTestCase {
     func testAbsolutePath() { XCTAssertEqual(ClipClassifier.kind(forText: "/Users/a/b.txt"), .filePath) }
     func testTildePath() { XCTAssertEqual(ClipClassifier.kind(forText: "~/Desktop"), .filePath) }
     func testFileURL() { XCTAssertEqual(ClipClassifier.kind(forText: "file:///tmp/x"), .filePath) }
-    func testMultilineIsText() { XCTAssertEqual(ClipClassifier.kind(forText: "/a\n/b"), .text) }
+    func testMultilineMixedIsText() { XCTAssertEqual(ClipClassifier.kind(forText: "/a\nhello"), .text) }
+    func testMultiplePathsArePaths() { XCTAssertEqual(ClipClassifier.kind(forText: "/a/b.txt\n/c/d.png"), .filePath) }
+    func testSlashCommentIsText() { XCTAssertEqual(ClipClassifier.kind(forText: "/ not a path"), .text) }
+    func testURLWithSpacesIsText() { XCTAssertEqual(ClipClassifier.kind(forText: "https://a.com see this"), .text) }
     func testEmptyIsText() { XCTAssertEqual(ClipClassifier.kind(forText: "   "), .text) }
     func testShellCommandIsText() { XCTAssertEqual(ClipClassifier.kind(forText: "sudo xcodebuild -license accept"), .text) }
 

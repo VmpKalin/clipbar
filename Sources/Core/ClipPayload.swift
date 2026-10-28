@@ -7,19 +7,25 @@ public struct ClipPayload: Sendable, Equatable {
     public let text: String?
     public let imageData: Data?
     public let contentHash: String
+    public var sourceAppBundleID: String?
+    public var sourceAppName: String?
 
-    public init(text: String) {
+    public init(text: String, sourceAppBundleID: String? = nil, sourceAppName: String? = nil) {
         self.kind = ClipClassifier.kind(forText: text)
         self.text = text
         self.imageData = nil
         self.contentHash = ClipClassifier.hash(Data(text.utf8))
+        self.sourceAppBundleID = sourceAppBundleID
+        self.sourceAppName = sourceAppName
     }
 
-    public init(imageData: Data) {
+    public init(imageData: Data, sourceAppBundleID: String? = nil, sourceAppName: String? = nil) {
         self.kind = .image
         self.text = nil
         self.imageData = imageData
         self.contentHash = ClipClassifier.hash(imageData)
+        self.sourceAppBundleID = sourceAppBundleID
+        self.sourceAppName = sourceAppName
     }
 }
 
@@ -27,19 +33,27 @@ public enum ClipClassifier {
     public static func kind(forText raw: String) -> ClipKind {
         let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         if text.isEmpty { return .text }
-        let singleLine = !text.contains("\n") && !text.contains("\r")
-        guard singleLine else { return .text }
+        let lines = text.split(whereSeparator: \.isNewline).map(String.init)
 
+        if lines.count > 1 {
+            // Several files copied in Finder arrive as one path per line.
+            return lines.allSatisfy(isPathLike) ? .filePath : .text
+        }
         if let url = URL(string: text), let scheme = url.scheme?.lowercased(),
-           ["http", "https"].contains(scheme), url.host() != nil {
+           ["http", "https"].contains(scheme), url.host() != nil, !text.contains(" ") {
             return .link
         }
-        if text.hasPrefix("file://") { return .filePath }
-        if text.hasPrefix("/") || text.hasPrefix("~/") || text == "~" {
-            // Avoid treating things like "/ comment" or "/regex/" as paths: require no spaces unless escaped.
-            return .filePath
-        }
+        if isPathLike(text) { return .filePath }
         return .text
+    }
+
+    static func isPathLike(_ line: String) -> Bool {
+        let t = line.trimmingCharacters(in: .whitespaces)
+        if t.hasPrefix("file://") { return true }
+        if t == "~" || t.hasPrefix("~/") { return true }
+        // "/" followed by a non-space character: "/Users/x" yes, "/ comment" no.
+        if t.hasPrefix("/"), t.count > 1, t.dropFirst().first != " " { return true }
+        return false
     }
 
     public static func hash(_ data: Data) -> String {

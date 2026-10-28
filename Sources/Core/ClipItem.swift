@@ -23,6 +23,9 @@ public final class ClipItem {
     public var useCount: Int
     public var isPinned: Bool
     public var isSaved: Bool
+    /// Bundle identifier of the app that was frontmost when the clip was captured.
+    public var sourceAppBundleID: String? = nil
+    public var sourceAppName: String? = nil
 
     public init(
         id: UUID = UUID(),
@@ -37,7 +40,9 @@ public final class ClipItem {
         lastUsedAt: Date = .now,
         useCount: Int = 0,
         isPinned: Bool = false,
-        isSaved: Bool = false
+        isSaved: Bool = false,
+        sourceAppBundleID: String? = nil,
+        sourceAppName: String? = nil
     ) {
         self.id = id
         self.kindRaw = kind.rawValue
@@ -52,6 +57,8 @@ public final class ClipItem {
         self.useCount = useCount
         self.isPinned = isPinned
         self.isSaved = isSaved
+        self.sourceAppBundleID = sourceAppBundleID
+        self.sourceAppName = sourceAppName
     }
 
     public var kind: ClipKind {
@@ -59,7 +66,13 @@ public final class ClipItem {
         set { kindRaw = newValue.rawValue }
     }
 
-    /// Short single-line title used in rows and widgets.
+    /// Content tags derived from the text (email, color, JSON…). Not stored.
+    public var tags: Set<ContentTag> {
+        guard kind == .text, let text else { return [] }
+        return ContentInspector.tags(for: text)
+    }
+
+    /// Short single-line title used in rows.
     public var title: String {
         switch kind {
         case .image:
@@ -68,9 +81,15 @@ public final class ClipItem {
             if let t = text, let url = URL(string: t), let host = url.host() { return host }
             return text ?? ""
         case .filePath:
+            let paths = PathResolver.paths(in: text ?? "")
+            if paths.count > 1 {
+                return "\(PathResolver.displayName(for: paths[0])) + \(paths.count - 1) more"
+            }
             return PathResolver.displayName(for: text ?? "")
         case .text:
-            return (text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            return (text ?? "")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .replacingOccurrences(of: "\n", with: " ⏎ ")
         }
     }
 }
