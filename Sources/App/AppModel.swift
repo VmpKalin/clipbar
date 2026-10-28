@@ -4,6 +4,8 @@ import SwiftData
 #if os(iOS)
 import UIKit
 import WidgetKit
+#else
+import ServiceManagement
 #endif
 
 /// Owns the model container, the store and the capture pipeline for the whole app.
@@ -42,6 +44,9 @@ final class AppModel {
         #if os(macOS)
         capture.captureNow()
         capture.startPolling()
+        if CommandLine.arguments.contains("--register-login-item") {
+            try? SMAppService.mainApp.register()
+        }
         #endif
     }
 
