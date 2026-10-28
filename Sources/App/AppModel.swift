@@ -141,6 +141,65 @@ final class AppModel {
         }
     }
 
+    /// Adds a generated image to the history, copies it and selects it.
+    private func publishImage(_ data: Data, from item: ClipItem?, message: String) {
+        guard let clip = store.ingest(ClipPayload(imageData: data, sourceAppBundleID: item?.sourceAppBundleID,
+                                                  sourceAppName: item?.sourceAppName)) else {
+            notify("Could not store the image", systemImage: "exclamationmark.triangle")
+            return
+        }
+        PasteboardWriter.write(clip, images: store.images)
+        capture.ignoreCurrentPasteboard()
+        panel?.state.select(.clip(clip.id), scroll: true)
+        notify(message, systemImage: "checkmark.circle")
+    }
+
+    func removeBackground(_ item: ClipItem) {
+        guard let url = imageURL(for: item) else { return }
+        notify("Removing background…", systemImage: "person.and.background.dotted")
+        Task {
+            do {
+                publishImage(try await ImageTools.removeBackground(at: url), from: item, message: "Background removed and copied")
+            } catch {
+                notify("No subject found to cut out", systemImage: "exclamationmark.triangle")
+            }
+        }
+    }
+
+    func scanCodes(_ item: ClipItem) {
+        guard let url = imageURL(for: item) else { return }
+        Task {
+            let codes = (try? await ImageTools.detectCodes(at: url)) ?? []
+            guard !codes.isEmpty else {
+                notify("No QR code or barcode found", systemImage: "qrcode.viewfinder")
+                return
+            }
+            let text = codes.joined(separator: "\n")
+            let clip = store.ingest(ClipPayload(text: text, sourceAppBundleID: item.sourceAppBundleID,
+                                                sourceAppName: item.sourceAppName))
+            PasteboardWriter.write(text: text)
+            capture.ignoreCurrentPasteboard()
+            if let clip { panel?.state.select(.clip(clip.id), scroll: true) }
+            notify(codes.count == 1 ? "Code content copied" : "\(codes.count) codes copied", systemImage: "qrcode.viewfinder")
+        }
+    }
+
+    func makeQRCode(text: String, from item: ClipItem?) {
+        do {
+            publishImage(try ImageTools.qrCode(for: text), from: item, message: "QR code copied")
+        } catch {
+            notify("Text is too long for a QR code", systemImage: "exclamationmark.triangle")
+        }
+    }
+
+    func copyAsDataURL(_ item: ClipItem) {
+        guard let url = imageURL(for: item), let dataURL = try? ImageTools.dataURL(forPNGAt: url) else { return }
+        PasteboardWriter.write(text: dataURL)
+        capture.ignoreCurrentPasteboard()
+        notify("Copied as data URL (\(ByteCountFormatter.string(fromByteCount: Int64(dataURL.utf8.count), countStyle: .file)))",
+               systemImage: "chevron.left.forwardslash.chevron.right")
+    }
+
     func saveImageToDownloads(_ item: ClipItem) {
         guard let url = imageURL(for: item) else { return }
         do {

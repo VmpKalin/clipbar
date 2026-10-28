@@ -145,6 +145,19 @@ struct PanelActions {
     func terminal(_ e: PanelEntry) { if case .clip(let item, _) = e { model.openInTerminal(item) } }
     func recognizeText(_ e: PanelEntry) { if case .clip(let item, _) = e { model.copyTextFromImage(item) } }
     func saveImage(_ e: PanelEntry) { if case .clip(let item, _) = e { model.saveImageToDownloads(item) } }
+    func removeBackground(_ e: PanelEntry) { if case .clip(let item, _) = e { model.removeBackground(item) } }
+    func scanCodes(_ e: PanelEntry) { if case .clip(let item, _) = e { model.scanCodes(item) } }
+    func copyAsDataURL(_ e: PanelEntry) { if case .clip(let item, _) = e { model.copyAsDataURL(item) } }
+
+    func canMakeQRCode(_ e: PanelEntry) -> Bool {
+        guard let text = text(of: e) else { return false }
+        return !text.isEmpty && text.utf8.count <= 2000
+    }
+
+    func makeQRCode(_ e: PanelEntry) {
+        guard let text = text(of: e) else { return }
+        if case .clip(let item, _) = e { model.makeQRCode(text: text, from: item) } else { model.makeQRCode(text: text, from: nil) }
+    }
 
     private func suggestedTitle(for item: ClipItem) -> String {
         let tags = item.tags
@@ -185,7 +198,13 @@ struct EntryMenu: View {
         }
         if actions.isImage(entry) {
             Button("Copy Text from Image", systemImage: "text.viewfinder") { actions.recognizeText(entry) }
+            Button("Scan QR Code / Barcode", systemImage: "qrcode.viewfinder") { actions.scanCodes(entry) }
+            Button("Remove Background", systemImage: "person.and.background.dotted") { actions.removeBackground(entry) }
+            Button("Copy as Data URL", systemImage: "chevron.left.forwardslash.chevron.right") { actions.copyAsDataURL(entry) }
             Button("Save to Downloads", systemImage: "square.and.arrow.down") { actions.saveImage(entry) }
+        }
+        if actions.canMakeQRCode(entry) {
+            Button("Make QR Code", systemImage: "qrcode") { actions.makeQRCode(entry) }
         }
         if actions.canOpen(entry) {
             Button("Open", systemImage: "arrow.up.forward.app") { actions.open(entry) }

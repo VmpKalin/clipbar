@@ -120,7 +120,7 @@ struct PreviewPane: View {
             }
             if actions.isImage(entry) {
                 ActionButton(title: "Copy Text from Image", systemImage: "text.viewfinder", shortcut: nil) { actions.recognizeText(entry) }
-                ActionButton(title: "Save to Downloads", systemImage: "square.and.arrow.down", shortcut: nil) { actions.saveImage(entry) }
+                ActionButton(title: "Remove Background", systemImage: "person.and.background.dotted", shortcut: nil) { actions.removeBackground(entry) }
             }
             if actions.canOpen(entry) {
                 ActionButton(title: "Open", systemImage: "arrow.up.forward.app", shortcut: "⌘O") { actions.open(entry) }
@@ -130,6 +130,16 @@ struct PreviewPane: View {
                 ActionButton(title: "Open in Terminal", systemImage: "terminal", shortcut: "⌘T") { actions.terminal(entry) }
             }
             Spacer()
+            Menu {
+                EntryMenu(entry: entry, actions: actions, order: order)
+            } label: {
+                Image(systemName: "ellipsis.circle")
+            }
+            .menuStyle(.button)
+            .buttonStyle(.borderless)
+            .menuIndicator(.hidden)
+            .frame(width: 30, height: 26)
+            .help("More actions")
             if actions.canDelete(entry) {
                 ActionButton(title: "Delete", systemImage: "trash", shortcut: "⌘⌫", tint: .red) {
                     actions.delete(entry, order: order)

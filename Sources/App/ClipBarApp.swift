@@ -16,7 +16,8 @@ struct ClipBarApp: App {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private(set) lazy var model: AppModel = {
-        AppModel(inMemory: SnapshotRenderer.isRequested, startCapture: !SnapshotRenderer.isRequested)
+        let offline = SnapshotRenderer.isRequested || SelfTest.isRequested
+        return AppModel(inMemory: offline, startCapture: !offline)
     }()
     private var statusItem: NSStatusItem?
     private var panel: PanelController?
@@ -26,6 +27,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         if SnapshotRenderer.isRequested {
             SnapshotRenderer.run(model: model)
+            return
+        }
+        if SelfTest.isRequested {
+            SelfTest.run()
             return
         }
         if CommandLine.arguments.contains("--register-login-item") {
