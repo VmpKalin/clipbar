@@ -30,6 +30,8 @@ final class AppModel {
 
     @ObservationIgnored weak var panel: PanelController?
     private(set) var toast: Toast?
+    /// Bumped on every change to history or Library; the panel uses it to cache its rows.
+    private(set) var dataVersion = 0
 
     var primaryDelivery: Delivery {
         get { access(keyPath: \.primaryDelivery); return Delivery(rawValue: UserDefaults.standard.string(forKey: "primaryAction") ?? "") ?? .copy }
@@ -57,6 +59,8 @@ final class AppModel {
         self.library = SnippetStore(context: container.mainContext)
         self.capture = CaptureCoordinator(reader: SystemPasteboardReader(), store: store)
         library.seedDefaultsIfNeeded()
+        store.onChange = { [weak self] in self?.dataVersion += 1 }
+        library.onChange = { [weak self] in self?.dataVersion += 1 }
         if startCapture {
             capture.captureNow()
             capture.startPolling()
@@ -100,8 +104,16 @@ final class AppModel {
     private func finish(_ delivery: Delivery, title: String) {
         capture.ignoreCurrentPasteboard()
         let target = panel?.previousApp
-        panel?.close()
-        guard delivery == .paste else { return }
+        guard delivery == .paste else {
+            panel?.close()
+            return
+        }
+        // Hide synchronously so the ⌘V goes to the previous app, not to our search field.
+        panel?.close(immediately: true)
+        guard let target else {
+            notify("Copied — no app to paste into", systemImage: "doc.on.doc")
+            return
+        }
         if !Paster.paste(into: target) {
             Paster.requestTrust()
             notify("Copied. Allow Accessibility to paste automatically.", systemImage: "hand.raised")
@@ -121,6 +133,7 @@ final class AppModel {
 
     func copyTextFromImage(_ item: ClipItem) {
         guard let url = imageURL(for: item) else { return }
+        let source = (item.sourceAppBundleID, item.sourceAppName)
         notify("Recognizing text…", systemImage: "text.viewfinder")
         Task {
             do {
@@ -129,11 +142,10 @@ final class AppModel {
                     notify("No text found in the image", systemImage: "text.viewfinder")
                     return
                 }
-                let clip = store.ingest(ClipPayload(text: text, sourceAppBundleID: item.sourceAppBundleID,
-                                                    sourceAppName: item.sourceAppName))
+                let clip = store.ingest(ClipPayload(text: text, sourceAppBundleID: source.0, sourceAppName: source.1))
                 PasteboardWriter.write(text: text)
                 capture.ignoreCurrentPasteboard()
-                if let clip { panel?.state.select(.clip(clip.id)) }
+                if let clip { panel?.state.select(.clip(clip.id), scroll: true) }
                 notify("Text copied from image", systemImage: "checkmark.circle")
             } catch {
                 notify("Text recognition failed", systemImage: "exclamationmark.triangle")
@@ -142,9 +154,9 @@ final class AppModel {
     }
 
     /// Adds a generated image to the history, copies it and selects it.
-    private func publishImage(_ data: Data, from item: ClipItem?, message: String) {
-        guard let clip = store.ingest(ClipPayload(imageData: data, sourceAppBundleID: item?.sourceAppBundleID,
-                                                  sourceAppName: item?.sourceAppName)) else {
+    private func publishImage(_ data: Data, source: (String?, String?), message: String) {
+        guard let clip = store.ingest(ClipPayload(imageData: data, sourceAppBundleID: source.0,
+                                                  sourceAppName: source.1)) else {
             notify("Could not store the image", systemImage: "exclamationmark.triangle")
             return
         }
@@ -156,10 +168,11 @@ final class AppModel {
 
     func removeBackground(_ item: ClipItem) {
         guard let url = imageURL(for: item) else { return }
+        let source = (item.sourceAppBundleID, item.sourceAppName)
         notify("Removing background…", systemImage: "person.and.background.dotted")
         Task {
             do {
-                publishImage(try await ImageTools.removeBackground(at: url), from: item, message: "Background removed and copied")
+                publishImage(try await ImageTools.removeBackground(at: url), source: source, message: "Background removed and copied")
             } catch {
                 notify("No subject found to cut out", systemImage: "exclamationmark.triangle")
             }
@@ -168,6 +181,7 @@ final class AppModel {
 
     func scanCodes(_ item: ClipItem) {
         guard let url = imageURL(for: item) else { return }
+        let source = (item.sourceAppBundleID, item.sourceAppName)
         Task {
             let codes = (try? await ImageTools.detectCodes(at: url)) ?? []
             guard !codes.isEmpty else {
@@ -175,8 +189,7 @@ final class AppModel {
                 return
             }
             let text = codes.joined(separator: "\n")
-            let clip = store.ingest(ClipPayload(text: text, sourceAppBundleID: item.sourceAppBundleID,
-                                                sourceAppName: item.sourceAppName))
+            let clip = store.ingest(ClipPayload(text: text, sourceAppBundleID: source.0, sourceAppName: source.1))
             PasteboardWriter.write(text: text)
             capture.ignoreCurrentPasteboard()
             if let clip { panel?.state.select(.clip(clip.id), scroll: true) }
@@ -186,7 +199,8 @@ final class AppModel {
 
     func makeQRCode(text: String, from item: ClipItem?) {
         do {
-            publishImage(try ImageTools.qrCode(for: text), from: item, message: "QR code copied")
+            publishImage(try ImageTools.qrCode(for: text), source: (item?.sourceAppBundleID, item?.sourceAppName),
+                         message: "QR code copied")
         } catch {
             notify("Text is too long for a QR code", systemImage: "exclamationmark.triangle")
         }
@@ -271,6 +285,11 @@ final class AppModel {
     // MARK: Feedback
 
     func notify(_ message: String, systemImage: String) {
+        // When the panel is hidden, show a small HUD under the menu bar instead.
+        guard panel?.isVisible == true else {
+            HUD.shared.show(message, systemImage: systemImage)
+            return
+        }
         let toast = Toast(message: message, systemImage: systemImage)
         self.toast = toast
         Task {

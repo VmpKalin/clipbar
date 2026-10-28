@@ -87,7 +87,7 @@ final class PanelController: NSObject, NSWindowDelegate {
 
     func show(fromHotKey: Bool = false) {
         let front = NSWorkspace.shared.frontmostApplication
-        if front?.bundleIdentifier != Bundle.main.bundleIdentifier { previousApp = front }
+        previousApp = front?.bundleIdentifier == Bundle.main.bundleIdentifier ? nil : front
         model.capture.captureNow()
         state.prepareForOpen()
 
@@ -107,7 +107,17 @@ final class PanelController: NSObject, NSWindowDelegate {
         statusButton?.highlight(true)
     }
 
-    func close() {
+    /// Hides the panel. `immediately` skips the fade so keyboard focus returns to the previous app
+    /// at once (required before posting ⌘V).
+    func close(immediately: Bool = false) {
+        if immediately {
+            guard panel.isVisible else { return }
+            isClosing = false
+            statusButton?.highlight(false)
+            panel.orderOut(nil)
+            panel.alphaValue = 1
+            return
+        }
         guard panel.isVisible, !isClosing else { return }
         isClosing = true
         statusButton?.highlight(false)

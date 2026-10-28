@@ -48,6 +48,12 @@ final class SystemPasteboardReader: PasteboardReader {
            !urls.isEmpty {
             return ClipPayload(text: urls.map { $0.path(percentEncoded: false) }.joined(separator: "\n"))
         }
+        // Spreadsheets and word processors put a picture of the selection next to the text: keep the text.
+        let hasRichText = types.contains(.rtf) || types.contains(.rtfd)
+        if hasRichText, let s = pasteboard.string(forType: .string),
+           !s.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return ClipPayload(text: s)
+        }
         if let data = pasteboard.data(forType: .png) { return ClipPayload(imageData: data) }
         if let tiff = pasteboard.data(forType: .tiff),
            let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) {

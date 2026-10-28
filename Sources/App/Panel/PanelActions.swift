@@ -71,7 +71,7 @@ struct PanelActions {
         return item.kind == .image
     }
     func transforms(for e: PanelEntry) -> [TextTransform] {
-        guard let text = text(of: e), text.count < 200_000 else { return [] }
+        guard let text = text(of: e), text.utf8.count < 20_000 else { return [] }
         return TextTransform.allCases.filter { $0.apply(text) != nil }
     }
 

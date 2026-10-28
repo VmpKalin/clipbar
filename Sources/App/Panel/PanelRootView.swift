@@ -11,13 +11,20 @@ struct PanelRootView: View {
     @FocusState private var searchFocused: Bool
     @Environment(\.openSettings) private var openSettings
 
+    @State private var cache = EntryCache()
+
     private var actions: PanelActions { PanelActions(model: model, state: state) }
 
     var body: some View {
-        let entries = EntryBuilder(state: state, clips: clips, groups: groups, snippets: snippets,
-                                   contacts: model.contacts).build()
-        let order = entries.compactMap(\.selection)
-        let selected = entries.first { $0.selection != nil && $0.selection == state.selection }
+        let key = EntryCache.Key(tab: state.tab, search: state.search, section: state.clipSection,
+                                 group: state.libraryGroupID, data: model.dataVersion, clips: clips.count,
+                                 snippets: snippets.count, groups: groups.count,
+                                 contacts: model.contacts.cards.count, access: model.contacts.access == .granted)
+        let (entries, order) = cache.value(for: key) {
+            EntryBuilder(state: state, clips: clips, groups: groups, snippets: snippets, contacts: model.contacts).build()
+        }
+        let current = state.effectiveSelection(in: order)
+        let selected = current.flatMap { c in entries.first { $0.selection == c } }
 
         ZStack {
             VStack(spacing: 0) {
@@ -25,7 +32,7 @@ struct PanelRootView: View {
                 FilterBar(clips: clips, groups: groups)
                     .padding(.bottom, 6)
                 Divider().opacity(0.5)
-                list(entries: entries, order: order)
+                list(entries: entries, order: order, current: current)
                 if state.showPreview, let selected {
                     Divider().opacity(0.5)
                     PreviewPane(entry: selected, actions: actions, order: order)
@@ -35,6 +42,11 @@ struct PanelRootView: View {
                 PanelFooter(totalClips: clips.count)
             }
             .background { shortcutButtons(entries: entries, order: order, selected: selected) }
+            .disabled(state.editor != nil)
+            // Keys work wherever focus is inside the panel (e.g. after clicking preview text).
+            .onKeyPress(keys: PanelRootView.navigationKeys, phases: .down) { press in
+                handleKey(press, order: order, selected: selected)
+            }
 
             if let editor = state.editor {
                 EditorOverlay(editor: editor)
@@ -54,8 +66,7 @@ struct PanelRootView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .glassEffect(.regular, in: .rect(cornerRadius: 22, style: .continuous))
         .clipShape(.rect(cornerRadius: 22, style: .continuous))
-        .onChange(of: order, initial: true) { _, new in state.ensureSelection(in: new) }
-        .onChange(of: state.openCount) { _, _ in searchFocused = true }
+        .onChange(of: state.openCount) { _, _ in if state.editor == nil { searchFocused = true } }
         .onChange(of: state.editor) { _, editor in if editor == nil { searchFocused = true } }
         .onChange(of: state.tab) { _, tab in
             if tab == .contacts {
@@ -82,22 +93,8 @@ struct PanelRootView: View {
                     .textFieldStyle(.plain)
                     .font(.system(size: 15))
                     .focused($searchFocused)
-                    .onKeyPress(.upArrow) { state.move(by: -1, in: order); return .handled }
-                    .onKeyPress(.downArrow) { state.move(by: 1, in: order); return .handled }
-                    .onKeyPress(.pageUp) { state.move(by: -8, in: order); return .handled }
-                    .onKeyPress(.pageDown) { state.move(by: 8, in: order); return .handled }
-                    .onKeyPress(.return, phases: .down) { press in
-                        guard let selected else { return .ignored }
-                        if press.modifiers.contains(.option) { actions.secondary(selected) } else { actions.primary(selected) }
-                        return .handled
-                    }
-                    .onKeyPress(.tab, phases: .down) { press in
-                        withAnimation(.snappy(duration: 0.2)) { state.nextTab(press.modifiers.contains(.shift) ? -1 : 1) }
-                        return .handled
-                    }
-                    .onKeyPress(.escape) {
-                        if !state.search.isEmpty { state.search = "" } else { model.panel?.close() }
-                        return .handled
+                    .onKeyPress(keys: PanelRootView.navigationKeys, phases: .down) { press in
+                        handleKey(press, order: order, selected: selected)
                     }
                     .onChange(of: state.search) { _, _ in state.select(nil) }
                 if !state.search.isEmpty {
@@ -126,6 +123,32 @@ struct PanelRootView: View {
         .padding(.bottom, 8)
     }
 
+    static let navigationKeys: Set<KeyEquivalent> = [.upArrow, .downArrow, .pageUp, .pageDown, .return, .tab, .escape]
+
+    private func handleKey(_ press: KeyPress, order: [PanelState.Selection], selected: PanelEntry?) -> KeyPress.Result {
+        guard state.editor == nil else { return .ignored }
+        switch press.key {
+        case .upArrow: state.move(by: -1, in: order)
+        case .downArrow: state.move(by: 1, in: order)
+        case .pageUp: state.move(by: -8, in: order)
+        case .pageDown: state.move(by: 8, in: order)
+        case .return:
+            guard let selected else { return .ignored }
+            if press.modifiers.contains(.option) { actions.secondary(selected) } else { actions.primary(selected) }
+        case .tab:
+            withAnimation(.snappy(duration: 0.2)) { state.nextTab(press.modifiers.contains(.shift) ? -1 : 1) }
+        case .escape:
+            if !state.search.isEmpty {
+                state.search = ""
+                searchFocused = true
+            } else {
+                model.panel?.close()
+            }
+        default: return .ignored
+        }
+        return .handled
+    }
+
     private var searchPrompt: String {
         switch state.tab {
         case .clipboard: "Search clipboard, library, contacts…"
@@ -137,7 +160,7 @@ struct PanelRootView: View {
     // MARK: List
 
     @ViewBuilder
-    private func list(entries: [PanelEntry], order: [PanelState.Selection]) -> some View {
+    private func list(entries: [PanelEntry], order: [PanelState.Selection], current: PanelState.Selection?) -> some View {
         if entries.isEmpty {
             emptyState
         } else {
@@ -145,7 +168,7 @@ struct PanelRootView: View {
                 ScrollView {
                     LazyVStack(spacing: 1) {
                         ForEach(entries) { entry in
-                            row(entry, order: order)
+                            row(entry, order: order, isSelected: entry.selection != nil && entry.selection == current)
                                 .id(entry.id)
                         }
                     }
@@ -165,8 +188,7 @@ struct PanelRootView: View {
     }
 
     @ViewBuilder
-    private func row(_ entry: PanelEntry, order: [PanelState.Selection]) -> some View {
-        let isSelected = entry.selection != nil && entry.selection == state.selection
+    private func row(_ entry: PanelEntry, order: [PanelState.Selection], isSelected: Bool) -> some View {
         Group {
             switch entry {
             case .header(_, let title, let symbol):
@@ -308,5 +330,35 @@ struct PanelRootView: View {
         case .clip(let id, _): "c-\(id)"
         case .group(let d): "g-\(d.existingID?.uuidString ?? "new")"
         }
+    }
+}
+
+/// Remembers the last built rows so hovering and moving the selection don't rebuild the list.
+@MainActor
+final class EntryCache {
+    struct Key: Equatable {
+        let tab: PanelState.Tab
+        let search: String
+        let section: ClipSection
+        let group: UUID?
+        let data: Int
+        let clips: Int
+        let snippets: Int
+        let groups: Int
+        let contacts: Int
+        let access: Bool
+    }
+
+    private var key: Key?
+    private var entries: [PanelEntry] = []
+    private var order: [PanelState.Selection] = []
+
+    func value(for key: Key, build: () -> [PanelEntry]) -> ([PanelEntry], [PanelState.Selection]) {
+        if key != self.key {
+            entries = build()
+            order = entries.compactMap(\.selection)
+            self.key = key
+        }
+        return (entries, order)
     }
 }

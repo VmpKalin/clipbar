@@ -8,6 +8,9 @@ public final class SnippetStore {
     public let context: ModelContext
     private let logger = Logger(subsystem: "com.aholoiad.clipbar", category: "SnippetStore")
 
+    /// Called after any mutation.
+    public var onChange: (@MainActor () -> Void)?
+
     public init(context: ModelContext) {
         self.context = context
     }
@@ -167,5 +170,6 @@ public final class SnippetStore {
 
     private func save() {
         do { try context.save() } catch { logger.error("Save failed: \(error.localizedDescription)") }
+        onChange?()
     }
 }

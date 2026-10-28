@@ -77,25 +77,21 @@ final class PanelState {
         self.selection = selection
     }
 
-    /// Moves the selection through `order` by `offset` (wrapping is disabled).
+    /// The selection actually shown: the stored one if it is still listed, otherwise the first row.
+    /// A nil selection therefore always means "the first row", so Return works right after opening,
+    /// typing or switching filters.
+    func effectiveSelection(in order: [Selection]) -> Selection? {
+        if let selection, order.contains(selection) { return selection }
+        return order.first
+    }
+
+    /// Moves the selection through `order` by `offset` (no wrapping).
     func move(by offset: Int, in order: [Selection]) {
         guard !order.isEmpty else { return }
         lastKeyboardMove = Date()
-        let index = selection.flatMap { order.firstIndex(of: $0) }
-        let next: Int
-        if let index {
-            next = max(0, min(order.count - 1, index + offset))
-        } else {
-            next = offset >= 0 ? 0 : order.count - 1
-        }
+        let current = effectiveSelection(in: order).flatMap { order.firstIndex(of: $0) } ?? 0
+        let next = max(0, min(order.count - 1, current + offset))
         select(order[next], scroll: true)
-    }
-
-    /// Keeps the selection valid for the current entries: selects the first entry when the
-    /// current one disappeared.
-    func ensureSelection(in order: [Selection]) {
-        if let selection, order.contains(selection) { return }
-        self.selection = order.first
     }
 
     func nextTab(_ step: Int = 1) {

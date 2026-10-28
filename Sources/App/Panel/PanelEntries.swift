@@ -37,7 +37,7 @@ struct EntryBuilder {
     let snippets: [Snippet]
     let contacts: ContactsProvider
 
-    static let historyLimit = 400
+    static let historyLimit = 5000
 
     func build() -> [PanelEntry] {
         var raw: [PanelEntry]

@@ -291,7 +291,12 @@ struct ClipPreview: View {
             let n = PathResolver.paths(in: item.text ?? "").count
             if n > 1 { parts.append("\(n) items") }
         default:
-            let s = ContentInspector.stats(for: item.text ?? "")
+            let text = item.text ?? ""
+            guard text.utf8.count < 300_000 else {
+                parts.append(ByteCountFormatter.string(fromByteCount: Int64(text.utf8.count), countStyle: .file))
+                break
+            }
+            let s = ContentInspector.stats(for: text)
             parts.append("\(s.characters) chars")
             if s.words > 1 { parts.append("\(s.words) words") }
             if s.lines > 1 { parts.append("\(s.lines) lines") }

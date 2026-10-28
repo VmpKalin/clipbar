@@ -234,13 +234,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard let id = sender.representedObject as? UUID,
               let clip = model.store.allItems().first(where: { $0.id == id }) else { return }
         model.deliver(clip, as: .copy)
-        model.notify("Copied", systemImage: "checkmark.circle")
+        model.notify("Copied “\(clip.title.prefix(30))”", systemImage: "checkmark.circle")
     }
 
     @objc private func copySnippetFromMenu(_ sender: NSMenuItem) {
         guard let id = sender.representedObject as? UUID,
               let snippet = model.library.allSnippets().first(where: { $0.id == id }) else { return }
         model.deliver(snippet, as: .copy)
+        model.notify("Copied “\(snippet.title.prefix(30))”", systemImage: "checkmark.circle")
     }
 
     @objc private func openPanel() { panel?.show() }
@@ -265,6 +266,13 @@ enum SettingsOpener {
         NSApp.activate()
         if let action {
             action()
+            return
+        }
+        // Before the panel has ever been shown, use the Settings item SwiftUI puts in the app menu.
+        let items = NSApp.mainMenu?.items.flatMap { $0.submenu?.items ?? [] } ?? []
+        if let item = items.first(where: { $0.keyEquivalent == "," && $0.keyEquivalentModifierMask == .command }),
+           let action = item.action {
+            NSApp.sendAction(action, to: item.target, from: item)
         } else {
             NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
         }
