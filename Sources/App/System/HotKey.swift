@@ -37,6 +37,25 @@ final class HotKey {
             }
         }
 
+        /// For showing the shortcut next to a menu item.
+        var keyEquivalent: String {
+            switch self {
+            case .optionSpace: " "
+            case .controlOptionCommandC: "c"
+            default: "v"
+            }
+        }
+
+        var modifierMask: NSEvent.ModifierFlags {
+            switch self {
+            case .shiftCommandV: [.shift, .command]
+            case .optionCommandV: [.option, .command]
+            case .controlCommandV: [.control, .command]
+            case .optionSpace: [.option]
+            case .controlOptionCommandC: [.control, .option, .command]
+            }
+        }
+
         static let defaultsKey = "hotkeyPreset"
         static var current: Preset {
             Preset(rawValue: UserDefaults.standard.string(forKey: defaultsKey) ?? "") ?? .shiftCommandV
@@ -87,5 +106,43 @@ final class HotKey {
             }
             return noErr
         }, 1, &eventType, nil, nil)
+    }
+}
+
+/// Shortcut for "Save the selected text to the Library" from any app.
+enum SaveSelectionShortcut: String, CaseIterable, Identifiable {
+    case off, controlOptionCommandS, optionCommandL, controlCommandL
+
+    var id: String { rawValue }
+    static let defaultsKey = "saveSelectionShortcut"
+
+    var title: String {
+        switch self {
+        case .off: "Off"
+        case .controlOptionCommandS: "⌃⌥⌘S"
+        case .optionCommandL: "⌥⌘L"
+        case .controlCommandL: "⌃⌘L"
+        }
+    }
+
+    var keyCode: UInt32? {
+        switch self {
+        case .off: nil
+        case .controlOptionCommandS: UInt32(kVK_ANSI_S)
+        case .optionCommandL, .controlCommandL: UInt32(kVK_ANSI_L)
+        }
+    }
+
+    var modifiers: UInt32 {
+        switch self {
+        case .off: 0
+        case .controlOptionCommandS: UInt32(cmdKey | optionKey | controlKey)
+        case .optionCommandL: UInt32(cmdKey | optionKey)
+        case .controlCommandL: UInt32(cmdKey | controlKey)
+        }
+    }
+
+    static var current: SaveSelectionShortcut {
+        SaveSelectionShortcut(rawValue: UserDefaults.standard.string(forKey: defaultsKey) ?? "") ?? .controlOptionCommandS
     }
 }

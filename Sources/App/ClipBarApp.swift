@@ -22,6 +22,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private var panel: PanelController?
     private var hotKey: HotKey?
+    private var saveHotKey: HotKey?
+    private var registeredSaveShortcut: SaveSelectionShortcut?
     private var observers: [NSObjectProtocol] = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -48,6 +50,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = item
         panel = PanelController(model: model, statusButton: item.button)
         registerHotKey()
+        registerSaveHotKey()
         observeCaptures()
 
         if CommandLine.arguments.contains("--open-panel") {
@@ -71,10 +74,50 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func defaultsChanged() {
         if HotKey.Preset.current != registeredPreset { registerHotKey() }
+        if SaveSelectionShortcut.current != registeredSaveShortcut { registerSaveHotKey() }
         let paused = model.capture.isPaused
         if paused != lastPaused {
             lastPaused = paused
             statusItem?.button?.image = statusImage(paused: paused)
+        }
+    }
+
+    private func registerSaveHotKey() {
+        saveHotKey?.unregister()
+        saveHotKey = nil
+        let shortcut = SaveSelectionShortcut.current
+        registeredSaveShortcut = shortcut
+        guard let code = shortcut.keyCode else { return }
+        saveHotKey = HotKey(keyCode: code, modifiers: shortcut.modifiers) { [weak self] in
+            self?.saveSelectionToLibrary()
+        }
+    }
+
+    /// Copies the selection in the frontmost app and opens "Add to Library" with it.
+    private func saveSelectionToLibrary() {
+        let before = NSPasteboard.general.changeCount
+        guard Paster.copySelection() else {
+            Paster.requestTrust()
+            panel?.show(fromHotKey: true)
+            model.notify("Allow Accessibility so ClipBar can copy your selection", systemImage: "hand.raised")
+            return
+        }
+        Task { @MainActor in
+            for _ in 0..<10 where NSPasteboard.general.changeCount == before {
+                try? await Task.sleep(for: .milliseconds(50))
+            }
+            guard NSPasteboard.general.changeCount != before,
+                  let text = NSPasteboard.general.string(forType: .string), !text.isEmpty else {
+                self.panel?.show(fromHotKey: true)
+                self.model.notify("Select some text first", systemImage: "text.cursor")
+                return
+            }
+            self.model.capture.captureNow()
+            self.panel?.show(fromHotKey: true)
+            let state = self.panel?.state
+            let group = self.model.library.groups().first?.id
+            let title = String(text.split(whereSeparator: \.isWhitespace).prefix(4).joined(separator: " ").prefix(40))
+            state?.editor = .snippet(.init(title: title, value: text, groupID: group))
         }
     }
 
@@ -132,22 +175,72 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func showStatusMenu() {
         let menu = NSMenu()
-        let open = NSMenuItem(title: "Open ClipBar", action: #selector(openPanel), keyEquivalent: "")
-        open.target = self
+        func item(_ title: String, _ action: Selector, key: String = "", image: String? = nil) -> NSMenuItem {
+            let i = NSMenuItem(title: title, action: action, keyEquivalent: key)
+            i.target = self
+            if let image { i.image = NSImage(systemSymbolName: image, accessibilityDescription: nil) }
+            return i
+        }
+        let open = item("Open ClipBar", #selector(openPanel), image: "doc.on.clipboard")
+        open.keyEquivalent = HotKey.Preset.current.keyEquivalent
+        open.keyEquivalentModifierMask = HotKey.Preset.current.modifierMask
         menu.addItem(open)
-        let pause = NSMenuItem(title: model.capture.isPaused ? "Resume Capturing" : "Pause Capturing",
-                               action: #selector(togglePause), keyEquivalent: "")
-        pause.target = self
-        menu.addItem(pause)
         menu.addItem(.separator())
-        let settings = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
-        settings.target = self
-        menu.addItem(settings)
+
+        // Pinned clips, one click to copy.
+        let pinned = model.store.allItems().filter(\.isPinned).prefix(12)
+        if !pinned.isEmpty {
+            menu.addItem(NSMenuItem.sectionHeader(title: "Pinned"))
+            for clip in pinned {
+                let i = item(String(clip.title.prefix(48)), #selector(copyClipFromMenu(_:)), image: "pin")
+                i.representedObject = clip.id
+                menu.addItem(i)
+            }
+            menu.addItem(.separator())
+        }
+
+        // Library groups as submenus.
+        let groups = model.library.groups().filter { !$0.snippets.isEmpty }
+        if !groups.isEmpty {
+            menu.addItem(NSMenuItem.sectionHeader(title: "Library"))
+            for group in groups {
+                let sub = NSMenu()
+                for snippet in group.sortedSnippets.prefix(30) {
+                    let i = item(snippet.title, #selector(copySnippetFromMenu(_:)))
+                    i.representedObject = snippet.id
+                    i.toolTip = model.expanded(snippet)
+                    sub.addItem(i)
+                }
+                let g = NSMenuItem(title: group.name, action: nil, keyEquivalent: "")
+                g.image = NSImage(systemSymbolName: group.symbol, accessibilityDescription: nil)
+                g.submenu = sub
+                menu.addItem(g)
+            }
+            menu.addItem(.separator())
+        }
+
+        menu.addItem(item(model.capture.isPaused ? "Resume Capturing" : "Pause Capturing", #selector(togglePause),
+                          image: model.capture.isPaused ? "play.circle" : "pause.circle"))
+        menu.addItem(item("Settings…", #selector(openSettings), key: ",", image: "gearshape"))
+        menu.addItem(.separator())
         let quit = NSMenuItem(title: "Quit ClipBar", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         menu.addItem(quit)
         statusItem?.menu = menu
         statusItem?.button?.performClick(nil)
         statusItem?.menu = nil
+    }
+
+    @objc private func copyClipFromMenu(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? UUID,
+              let clip = model.store.allItems().first(where: { $0.id == id }) else { return }
+        model.deliver(clip, as: .copy)
+        model.notify("Copied", systemImage: "checkmark.circle")
+    }
+
+    @objc private func copySnippetFromMenu(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? UUID,
+              let snippet = model.library.allSnippets().first(where: { $0.id == id }) else { return }
+        model.deliver(snippet, as: .copy)
     }
 
     @objc private func openPanel() { panel?.show() }

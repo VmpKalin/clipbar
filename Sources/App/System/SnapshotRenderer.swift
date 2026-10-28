@@ -56,6 +56,8 @@ enum SnapshotRenderer {
             },
             Scenario(name: "11-contacts") { s, _ in s.tab = .contacts },
             Scenario(name: "12-no-preview") { s, _ in s.showPreview = false },
+            Scenario(name: "14-secret") { s, d in s.select(.clip(d.clips["secret"]!.id)) },
+            Scenario(name: "15-filter-search", dark: true) { s, _ in s.search = "app:terminal" },
         ]
 
         Task { @MainActor in
@@ -126,6 +128,7 @@ enum SnapshotRenderer {
         add("color", ClipPayload(text: "#5E5CE6", sourceAppBundleID: "com.figma.Desktop", sourceAppName: "Figma"), minutesAgo: 40)
         add("link", ClipPayload(text: "https://developer.apple.com/design/human-interface-guidelines/materials", sourceAppBundleID: "com.apple.Safari", sourceAppName: "Safari"), minutesAgo: 20, used: 1)
         add("path", ClipPayload(text: "/Applications/Xcode.app", sourceAppBundleID: "com.apple.Terminal", sourceAppName: "Terminal"), minutesAgo: 8)
+        add("secret", ClipPayload(text: "sk-ant-api03-" + String(repeating: "Q7xk", count: 12), sourceAppBundleID: "com.apple.Safari", sourceAppName: "Safari"), minutesAgo: 3)
         add("command", ClipPayload(text: "xcodebuild -scheme ClipBar -destination 'platform=macOS' build", sourceAppBundleID: "com.apple.Terminal", sourceAppName: "Terminal"), minutesAgo: 1)
 
         let lib = model.library

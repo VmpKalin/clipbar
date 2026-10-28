@@ -26,6 +26,7 @@ private struct GeneralSettings: View {
     @AppStorage("panelPosition") private var position = PanelController.Position.statusItem.rawValue
     @AppStorage("panelSize") private var size = PanelController.Size.regular.rawValue
     @AppStorage("flashOnCapture") private var flashOnCapture = true
+    @AppStorage(SaveSelectionShortcut.defaultsKey) private var saveShortcut = SaveSelectionShortcut.controlOptionCommandS.rawValue
     @State private var trusted = Paster.isTrusted
 
     var body: some View {
@@ -34,6 +35,9 @@ private struct GeneralSettings: View {
             Section("Open ClipBar") {
                 Picker("Keyboard shortcut", selection: $hotkey) {
                     ForEach(HotKey.Preset.allCases) { Text($0.title).tag($0.rawValue) }
+                }
+                Picker("Save selection to Library", selection: $saveShortcut) {
+                    ForEach(SaveSelectionShortcut.allCases) { Text($0.title).tag($0.rawValue) }
                 }
                 Picker("Panel opens", selection: $position) {
                     ForEach(PanelController.Position.allCases) { Text($0.title).tag($0.rawValue) }

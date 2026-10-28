@@ -33,11 +33,19 @@ enum Paster {
         return true
     }
 
-    private static func postCommandV() {
+    /// Asks the frontmost app to copy its selection (⌘C). Returns false when not permitted.
+    static func copySelection() -> Bool {
+        guard isTrusted else { return false }
+        post(key: 0x08) // C
+        return true
+    }
+
+    private static func postCommandV() { post(key: 0x09) }
+
+    private static func post(key: CGKeyCode) {
         let source = CGEventSource(stateID: .combinedSessionState)
-        let vKey: CGKeyCode = 0x09
-        let down = CGEvent(keyboardEventSource: source, virtualKey: vKey, keyDown: true)
-        let up = CGEvent(keyboardEventSource: source, virtualKey: vKey, keyDown: false)
+        let down = CGEvent(keyboardEventSource: source, virtualKey: key, keyDown: true)
+        let up = CGEvent(keyboardEventSource: source, virtualKey: key, keyDown: false)
         down?.flags = .maskCommand
         up?.flags = .maskCommand
         down?.post(tap: .cgAnnotatedSessionEventTap)
