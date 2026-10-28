@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 
 /// Extra facts about a text clip, used for smart sections, icons and previews.
 public enum ContentTag: String, CaseIterable, Sendable {
@@ -11,6 +12,19 @@ public enum ContentTag: String, CaseIterable, Sendable {
 }
 
 public enum ContentInspector {
+    private static let cache = Mutex<[String: Set<ContentTag>]>([:])
+
+    /// Same as `tags(for:)` but memoized by a content key (the clip's hash).
+    public static func cachedTags(for text: String, key: String) -> Set<ContentTag> {
+        if let hit = cache.withLock({ $0[key] }) { return hit }
+        let tags = tags(for: text)
+        cache.withLock { dict in
+            if dict.count > 5000 { dict.removeAll() }
+            dict[key] = tags
+        }
+        return tags
+    }
+
     public static func tags(for raw: String) -> Set<ContentTag> {
         let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return [] }

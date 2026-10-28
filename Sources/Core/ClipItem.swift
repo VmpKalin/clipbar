@@ -69,7 +69,7 @@ public final class ClipItem {
     /// Content tags derived from the text (email, color, JSON…). Not stored.
     public var tags: Set<ContentTag> {
         guard kind == .text, let text else { return [] }
-        return ContentInspector.tags(for: text)
+        return ContentInspector.cachedTags(for: text, key: contentHash)
     }
 
     /// Short single-line title used in rows.

@@ -28,6 +28,11 @@ final class SearchMatcherTests: XCTestCase {
         XCTAssertNil(SearchMatcher.score("ab", in: String(repeating: "a", count: 10) + String(repeating: "x", count: 80) + "b"))
     }
 
+    func testFuzzyIsNotTooLoose() {
+        XCTAssertNil(SearchMatcher.score("mail", in: "I'm away until 28.10 and will reply when I'm back."))
+        XCTAssertNotNil(SearchMatcher.score("xcb", in: "xcodebuild"))
+    }
+
     func testFields() {
         XCTAssertNotNil(SearchMatcher.score("safari", fields: [nil, "text", "Safari"]))
     }

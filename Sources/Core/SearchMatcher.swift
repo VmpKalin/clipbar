@@ -19,8 +19,8 @@ public enum SearchMatcher {
         // All query words present somewhere.
         let words = q.split(separator: " ")
         if words.count > 1, words.allSatisfy({ c.contains($0) }) { return 300 }
-        // Fuzzy subsequence (only for short queries against short-ish candidates, to avoid noise).
-        guard q.count >= 2, q.count <= 24, !q.contains(" ") else { return nil }
+        // Fuzzy subsequence (only for short queries against short candidates, to avoid noise).
+        guard q.count >= 2, q.count <= 24, !q.contains(" "), c.count <= 64 else { return nil }
         var index = c.startIndex
         var gaps = 0
         for ch in q {
@@ -28,8 +28,9 @@ public enum SearchMatcher {
             gaps += c.distance(from: index, to: found)
             index = c.index(after: found)
         }
-        let score = 200 - gaps * 4
-        return score > 40 ? score : nil
+        guard gaps <= q.count * 2 else { return nil }
+        let score = 200 - gaps * 8
+        return score > 80 ? score : nil
     }
 
     /// Best score over several fields of the same item.
