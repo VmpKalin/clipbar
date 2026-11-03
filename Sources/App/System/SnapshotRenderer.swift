@@ -58,6 +58,12 @@ enum SnapshotRenderer {
             Scenario(name: "12-no-preview") { s, _ in s.showPreview = false },
             Scenario(name: "14-secret") { s, d in s.select(.clip(d.clips["secret"]!.id)) },
             Scenario(name: "15-filter-search", dark: true) { s, _ in s.search = "app:terminal" },
+            Scenario(name: "16-library-dynamic-light") { s, d in
+                s.tab = .library
+                s.libraryGroupID = d.snippets["today"]!.group?.id
+                s.select(.snippet(d.snippets["today"]!.id))
+            },
+            Scenario(name: "17-color-light") { s, d in s.select(.clip(d.clips["color"]!.id)) },
         ]
 
         Task { @MainActor in

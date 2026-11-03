@@ -1,8 +1,33 @@
-# ClipBar
+<p align="center">
+  <img src="Sources/App/Resources/Assets.xcassets/AppIcon.appiconset/icon_256x256.png" width="128" alt="ClipBar icon">
+</p>
 
-A Liquid Glass clipboard manager and "everything you paste" library for the Mac menu bar, in the spirit of Maccy.
+<h1 align="center">ClipBar</h1>
 
-Press **⇧⌘V** (or click the menu bar icon) and a glass panel drops down under the icon.
+<p align="center"><b>Your clipboard, supercharged.</b><br>
+A Liquid Glass clipboard manager and "everything you paste" library that lives in the Mac menu bar.</p>
+
+<p align="center"><img src="docs/promo/01-hero.jpg" alt="ClipBar panel under the menu bar"></p>
+
+Press **⇧⌘V** (or click the menu bar icon) and a glass panel drops down under the icon. Everything you copied, the snippets you type every day and your contacts are one search away. Hit ↩ to copy, ⌥↩ to paste straight into the app you were in.
+
+## Why ClipBar
+
+- **Never lose a copy.** Text, links, files, images, colors and code are all kept, with the app they came from.
+- **One search for everything.** History, your Library and Contacts in a single fuzzy search box.
+- **Stop retyping.** Emails, addresses, IBANs, replies and dynamic snippets like `{date}` and `{uuid}`.
+- **Do more with what you copied.** OCR, QR codes, background removal, JSON formatting, case changes, a calculator and more, right before you paste.
+- **Private.** Everything stays on your Mac. Passwords are never stored, API keys are masked and expire.
+- **Native.** SwiftUI, Liquid Glass, keyboard-first, tiny footprint.
+
+| | |
+| --- | --- |
+| ![Quick search](docs/promo/02-quick-search.jpg) | ![Library](docs/promo/03-library.jpg) |
+| ![Dynamic snippets](docs/promo/04-dynamic.jpg) | ![Images](docs/promo/05-images.jpg) |
+| ![Files](docs/promo/06-files.jpg) | ![Smart types](docs/promo/07-colors.jpg) |
+| ![Privacy](docs/promo/08-privacy.jpg) | ![Settings](docs/screenshots/13-settings.png) |
+
+Raw panel renders are in [docs/screenshots](docs/screenshots). Launch copy and promo plan are in [docs/marketing/launch-kit.md](docs/marketing/launch-kit.md).
 
 ## What's inside
 
@@ -81,6 +106,12 @@ Two hidden launch modes help verify the app without clicking through it:
 
 ```bash
 /Applications/ClipBar.app/Contents/MacOS/ClipBar --snapshot ~/Desktop/ClipBarSnapshots
+```
+
+Promo images are generated from the snapshots:
+
+```bash
+swift scripts/make-promo.swift ~/Desktop/ClipBarSnapshots docs/promo
 ```
 
 `--selftest` runs OCR, QR, background removal, templates and the calculator end to end. `--snapshot` renders the panel with sample data into PNGs. Both use an in-memory store and never touch your history.
