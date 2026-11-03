@@ -102,7 +102,7 @@ Post with the hero image and 3 to 4 slides as a gallery. r/macapps requires a fl
 
 These block distribution to other people. The current build is signed with an Apple Development certificate and only runs reliably on this Mac.
 
-- [ ] **Developer ID + notarization.** Sign with "Developer ID Application", enable hardened runtime, notarize with `notarytool`, staple, and ship a DMG. Without this, Gatekeeper blocks the app on other Macs.
+- [ ] **Developer ID + notarization.** The pipeline is ready (`scripts/release.sh`, hardened runtime on). What's left is the one-time setup in [docs/release.md](../release.md): a Developer ID certificate and notary credentials.
 - [ ] **Updates.** Add Sparkle (appcast on GitHub Releases) so testers get fixes.
 - [ ] **Onboarding.** Make the first launch explain ⇧⌘V and ask for Accessibility (for paste) with one clear screen.
 - [ ] **Landing page.** One page with the hero, 4 slides, the video, a download button and an email field. GitHub Pages or Framer is enough.

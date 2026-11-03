@@ -3,5 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>com.apple.security.app-sandbox</key><false/>
+	<!-- Hardened runtime blocks Contacts without this. -->
+	<key>com.apple.security.personal-information.addressbook</key><true/>
 </dict>
 </plist>

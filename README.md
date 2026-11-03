@@ -92,6 +92,10 @@ xcodebuild -scheme ClipBar -destination 'platform=macOS' -configuration Release 
 
 The app is signed with the local Apple Development certificate (team `33K57T9459` in `project.yml`), so Accessibility and Contacts permissions survive rebuilds.
 
+## Distribution
+
+`scripts/release.sh` builds a universal, Developer ID–signed, notarized DMG. See [docs/release.md](docs/release.md) for the one-time setup.
+
 ## Tests and checks
 
 ```bash
